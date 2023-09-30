@@ -17,8 +17,18 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
         if(!context) {
             return;
         }
-        context.fillStyle = 'blue';
-        context.fillRect(0,0,100,100);
+        context.fillStyle = 'red';
+        let a = 0;
+        let b = 0;
+        while (a<Number(props.width)) {
+            while (b<Number(props.height)) {
+                context.fillStyle = 'red';
+                context.fillRect(a, b, 20, 20);
+                b+=21;
+            }
+            b=0;
+            a+=21;
+        }
 
     }, [])
 
