@@ -1,4 +1,5 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useTransition, useState } from 'react';
+import './Canvas.css';
 
 type CanvasProps = React.DetailedHTMLProps<
 React.CanvasHTMLAttributes<HTMLCanvasElement>,
@@ -6,7 +7,43 @@ HTMLCanvasElement>;
 
 const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
 
+    const styles = {
+        transform: `translate(${50}px, ${50}px)`,
+        width: `${1000}px`,
+        height: `${1000}px`,
+    }
+
+    enum colours  {
+        red = 'red',
+        blue = 'blue',
+        green = 'green',
+        lightblue = 'lightblue',
+    }
+
+    let board = Array(1000).fill(Array(1000).fill(colours.red));
+
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+    const [mousePos, setMousepos] = useState({})
+
+    useEffect(() => {
+        const handleMouseMove = (event) => {
+          setMousepos({ x: event.clientX, y: event.clientY });
+        };
+    
+        window.addEventListener('mousemove', handleMouseMove);
+    
+        return () => {
+          window.removeEventListener(
+            'mousemove',
+            handleMouseMove
+          );
+        };
+      }, [])
+
+    const click = () => {
+        
+    }
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -22,17 +59,20 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
         let b = 0;
         while (a<Number(props.width)) {
             while (b<Number(props.height)) {
-                context.fillStyle = 'red';
-                context.fillRect(a, b, 20, 20);
-                b+=21;
+                context.fillStyle = board[a][b];
+                context.fillRect(a, b, 1, 1);
+                b+=1;
             }
             b=0;
-            a+=21;
+            a+=1;
         }
 
-    }, [])
+    }, [board])
 
-    return <canvas width={props.width} height={props.height} ref={canvasRef}/>
+
+
+
+    return <canvas onClick={click} width={props.width} height={props.height} ref={canvasRef} style={styles}/>
 };
 
 export default Canvas;
