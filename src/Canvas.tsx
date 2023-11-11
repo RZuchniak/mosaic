@@ -13,20 +13,14 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     const [mouselocationx, setmouselocationx] = useState(0);
     const [mouselocationy, setmouselocationy] = useState(0);
 
-    const styles = {
-        transform: `translate(${locationx}px, ${locationy}px)`,
-        width: `${1000}px`,
-        height: `${1000}px`,
+    enum Colour  {
+        Red = 'red',
+        Blue = 'blue',
+        Green = 'green',
+        LightBlue = 'lightblue',
     }
 
-    enum colours  {
-        red = 'red',
-        blue = 'blue',
-        green = 'green',
-        lightblue = 'lightblue',
-    }
-
-    let board = Array(1000).fill(Array(1000).fill(colours.red));
+    let board = Array(1000).fill(Array(1000).fill(Colour.Red));
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     
@@ -39,6 +33,11 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     }
 
     useEffect(() => {
+        const canvas = canvasRef.current;
+        if(!canvas) {
+            return;
+        }
+        canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
         console.log(locationx, locationy, "location");
         setlocationx(mouselocationx);
         setlocationy(mouselocationy);
@@ -63,16 +62,17 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
             const y1 = y - rect.top;
             context.fillStyle = 'blue';
             context.fillRect(x1, y1, 5, 5);
-            board[x1][y1] = colours.blue;
+            board[x1][y1] = Colour.Blue;
         })
     }
 
     useEffect(() => {
+        console.log("start");
         const canvas = canvasRef.current;
         if(!canvas) {
             return;
         }
-        const context = canvas.getContext('2d')
+        const context = canvas.getContext('2d');
         if(!context) {
             return;
         }
@@ -89,12 +89,12 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
             a+=1;
         }
 
-    })
+    }, []);
 
 
 
 
-    return <canvas onClick={click} onMouseDown={move} width={props.width} height={props.height} ref={canvasRef} style={styles}/>
+    return <canvas onClick={click} onMouseDown={move} width={props.width} height={props.height} ref={canvasRef}/>
 };
 
 export default Canvas;
