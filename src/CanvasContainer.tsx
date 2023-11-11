@@ -1,5 +1,4 @@
 import { useRef, useEffect, useTransition, useState } from 'react';
-import './Canvas.css';
 
 type CanvasProps = React.DetailedHTMLProps<
 React.CanvasHTMLAttributes<HTMLCanvasElement>,
