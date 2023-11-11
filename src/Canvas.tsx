@@ -7,12 +7,7 @@ HTMLCanvasElement>;
 
 const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
 
-    const [locationx, setlocationx] = useState(0);
-    const [locationy, setlocationy] = useState(0);
-
-    const [mouselocationx, setmouselocationx] = useState(0);
-    const [mouselocationy, setmouselocationy] = useState(0);
-
+    
     enum Colour  {
         Red = 'red',
         Blue = 'blue',
@@ -24,46 +19,57 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     
-    const move = () => {
-        addEventListener('mousemove', (e) => {
-            console.log(e.clientX, e.clientY, "move");
-            setmouselocationx(e.clientX);
-            setmouselocationy(e.clientY);
-        })
-    }
 
     useEffect(() => {
+        let locationx = 0;
+        let locationy = 0;
+        const move = (e: MouseEvent) => {
+            if(e.buttons === 2){
+                console.log(e.clientX, e.clientY, "move");
+                const canvas = canvasRef.current;
+                if(!canvas) {
+                    return;
+                }
+                locationx = Math.max(0, Math.min(locationx + e.movementX, 1000))
+                locationy = Math.max(-100, Math.min(locationy + e.movementY, 500))
+                console.log(e.movementX);
+                console.log({locationx, locationy});
+                canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
+            }
+        }
+        const contextMenu = (e: Event) => {
+            e.preventDefault();
+        }
+        window.addEventListener('mousemove', move);
+        window.addEventListener('contextmenu', contextMenu);
+        
+        return () => {
+          window.removeEventListener('mousemove', move);
+          window.removeEventListener('contextmenu', contextMenu);
+        }
+      }, []);
+
+
+    const click = (e: any) => {
+        
         const canvas = canvasRef.current;
         if(!canvas) {
             return;
         }
-        canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
-        console.log(locationx, locationy, "location");
-        setlocationx(mouselocationx);
-        setlocationy(mouselocationy);
-    }, [mouselocationx, mouselocationy  ])
+        const context = canvas.getContext('2d')
+        if(!context) {
+            return;
+        }
+        const x = e.clientX;
+        const y = e.clientY;
 
-    const click = () => {
-        addEventListener('click', (e) => {
-
-            const canvas = canvasRef.current;
-            if(!canvas) {
-                return;
-            }
-            const context = canvas.getContext('2d')
-            if(!context) {
-                return;
-            }
-            const x = e.clientX;
-            const y = e.clientY;
-
-            const rect = canvas.getBoundingClientRect();
-            const x1 = x - rect.left;
-            const y1 = y - rect.top;
-            context.fillStyle = 'blue';
-            context.fillRect(x1, y1, 5, 5);
-            board[x1][y1] = Colour.Blue;
-        })
+        const rect = canvas.getBoundingClientRect();
+        const x1 = x - rect.left;
+        const y1 = y - rect.top;
+        context.fillStyle = 'blue';
+        context.fillRect(x1, y1, 5, 5);
+        board[x1][y1] = Colour.Blue;
+        
     }
 
     useEffect(() => {
@@ -94,7 +100,7 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
 
 
 
-    return <canvas onClick={click} onMouseDown={move} width={props.width} height={props.height} ref={canvasRef}/>
+    return <canvas onClick={click} width={props.width} height={props.height} ref={canvasRef}/>
 };
 
 export default Canvas;
