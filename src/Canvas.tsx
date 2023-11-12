@@ -1,4 +1,4 @@
-import { useRef, useEffect, useTransition, useState } from 'react';
+import { useRef, useEffect, useTransition, useState, MouseEventHandler } from 'react';
 import './Canvas.css';
 
 type CanvasProps = React.DetailedHTMLProps<
@@ -23,6 +23,22 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     const [locationx, setlocationx] = useState(0);
     const [locationy, setlocationy] = useState(0);
 
+    function move(e: React.MouseEvent) {
+        
+        if(e.buttons === 2){
+            
+            const canvas = canvasRef.current;
+            if(!canvas) {
+                return;
+            }
+            setlocationx(Math.max(0, Math.min((locationx + (e.movementX/zoom)) , 1000)))
+            setlocationy(Math.max(-100, Math.min((locationy + (e.movementY/zoom)) , 500)))
+            console.log(zoom);
+            console.log(locationx);
+            canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
+        }
+    } 
+    
     useEffect(() => {
         console.log("1: " + zoom)
         setzoom(props.results || 1);
@@ -30,30 +46,12 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     }, [props.results])
 
     useEffect(() => {
-        const move = (e: MouseEvent) => {
-            if(e.buttons === 2){
-                console.log(e.clientX, e.clientY, "move");
-                const canvas = canvasRef.current;
-                if(!canvas) {
-                    return;
-                }
-                setlocationx(Math.max(0, Math.min((locationx + (e.movementX/zoom)) , 1000)))
-                setlocationy(Math.max(-100, Math.min((locationy + (e.movementY/zoom)) , 500)))
-                console.log(zoom);
-                console.log(locationx);
-                canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
-            }
-        }
         const contextMenu = (e: Event) => {
             e.preventDefault();
         }
-
-
-        window.addEventListener('mousemove', move);
         window.addEventListener('contextmenu', contextMenu);
-        
         return () => {
-          window.removeEventListener('mousemove', move);
+          
           window.removeEventListener('contextmenu', contextMenu);
         }
       }, [zoom]);
@@ -110,7 +108,7 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     }, []);
 
 
-    return <canvas onClick={click} width={props.width} height={props.height} ref={canvasRef}/>
+    return <canvas onClick={click} width={props.width} height={props.height} ref={canvasRef} onMouseMove={move}/>
 };
 
 export default Canvas;
