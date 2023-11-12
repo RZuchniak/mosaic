@@ -6,7 +6,6 @@ React.CanvasHTMLAttributes<HTMLCanvasElement>,
 HTMLCanvasElement>;
 
 const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
-
     
     enum Colour  {
         Red = 'red',
@@ -18,7 +17,14 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     let board = Array(1000).fill(Array(1000).fill(Colour.Red));
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
-    
+
+    const [zoom, setzoom] = useState(1)
+
+    useEffect(() => {
+        console.log("1: " + zoom)
+        setzoom(props.results || 1);
+        console.log("2: " + zoom);
+    }, [props.results])
 
     useEffect(() => {
         let locationx = 0;
@@ -30,8 +36,8 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
                 if(!canvas) {
                     return;
                 }
-                locationx = Math.max(0, Math.min(locationx + e.movementX, 1000))
-                locationy = Math.max(-100, Math.min(locationy + e.movementY, 500))
+                locationx = Math.max(0, Math.min((locationx + (e.movementX * (1/zoom))) , 1000))
+                locationy = Math.max(-100, Math.min((locationy + (e.movementY * (1/zoom))) , 500))
                 console.log(e.movementX);
                 console.log({locationx, locationy});
                 canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
@@ -40,6 +46,8 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
         const contextMenu = (e: Event) => {
             e.preventDefault();
         }
+
+
         window.addEventListener('mousemove', move);
         window.addEventListener('contextmenu', contextMenu);
         
@@ -64,13 +72,16 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
         const y = e.clientY;
 
         const rect = canvas.getBoundingClientRect();
-        const x1 = x - rect.left;
-        const y1 = y - rect.top;
+        console.log(rect.left);
+        const x1 = x - (rect.left);
+        const y1 = y - (rect.top);
         context.fillStyle = 'blue';
-        context.fillRect(x1, y1, 5, 5);
-        board[x1][y1] = Colour.Blue;
+        context.fillRect(800, 800, 5, 5);
+        board[Math.round(x1)][Math.round(y1)] = Colour.Blue;
         
     }
+
+    
 
     useEffect(() => {
         console.log("start");
@@ -96,8 +107,6 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
         }
 
     }, []);
-
-
 
 
     return <canvas onClick={click} width={props.width} height={props.height} ref={canvasRef}/>
