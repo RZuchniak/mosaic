@@ -7,17 +7,15 @@ function App() {
   
 
   const scroll = (e: WheelEvent) => {
-    setzoom(Math.max(Math.min((Math.round((e.deltaY*-0.001)*100))/100 + zoom, 2.05), 0.15));
+    setzoom(Math.round(Math.max(Math.min((e.deltaY*-0.001) + zoom, 2.02), 0.15)*100)/100);
   }
 
   window.addEventListener('wheel', scroll);
 
   return ( 
-    <div className='position'>
       <div className='scaler' style={{transform: `scale(${zoom})`}}>
         <Canvas id="canvas" width={1000} height={1000} results={zoom}/>
       </div>
-    </div>
   )
 }
 

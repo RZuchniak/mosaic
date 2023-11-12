@@ -20,6 +20,9 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
 
     const [zoom, setzoom] = useState(1)
 
+    const [locationx, setlocationx] = useState(0);
+    const [locationy, setlocationy] = useState(0);
+
     useEffect(() => {
         console.log("1: " + zoom)
         setzoom(props.results || 1);
@@ -27,8 +30,6 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     }, [props.results])
 
     useEffect(() => {
-        let locationx = 0;
-        let locationy = 0;
         const move = (e: MouseEvent) => {
             if(e.buttons === 2){
                 console.log(e.clientX, e.clientY, "move");
@@ -36,10 +37,10 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
                 if(!canvas) {
                     return;
                 }
-                locationx = Math.max(0, Math.min((locationx + (e.movementX * (1/zoom))) , 1000))
-                locationy = Math.max(-100, Math.min((locationy + (e.movementY * (1/zoom))) , 500))
-                console.log(e.movementX);
-                console.log({locationx, locationy});
+                setlocationx(Math.max(0, Math.min((locationx + (e.movementX/zoom)) , 1000)))
+                setlocationy(Math.max(-100, Math.min((locationy + (e.movementY/zoom)) , 500)))
+                console.log(zoom);
+                console.log(locationx);
                 canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
             }
         }
@@ -55,7 +56,7 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
           window.removeEventListener('mousemove', move);
           window.removeEventListener('contextmenu', contextMenu);
         }
-      }, []);
+      }, [zoom]);
 
 
     const click = (e: any) => {
@@ -72,11 +73,11 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
         const y = e.clientY;
 
         const rect = canvas.getBoundingClientRect();
-        console.log(rect.left);
-        const x1 = x - (rect.left);
-        const y1 = y - (rect.top);
+        const x1 = ((x) - (rect.left))/zoom;
+        const y1 = ((y) - (rect.top))/zoom;
         context.fillStyle = 'blue';
-        context.fillRect(800, 800, 5, 5);
+        context.fillRect(x1, y1, 5, 5);
+
         board[Math.round(x1)][Math.round(y1)] = Colour.Blue;
         
     }
