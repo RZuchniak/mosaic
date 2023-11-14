@@ -1,6 +1,10 @@
 import './App.css'
 import Canvas from './Canvas'
 import { useState } from 'react';
+import { io } from "socket.io-client"
+
+const socket = io('http://localhost:3000');
+socket.emit('Hello');
 
 function App() {
   const [zoom, setzoom] = useState(1);
