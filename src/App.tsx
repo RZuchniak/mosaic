@@ -3,7 +3,14 @@ import Canvas from './Canvas'
 import { useState } from 'react';
 import { io } from "socket.io-client"
 
-const socket = io('http://localhost:3000');
+const socket = io('http://localhost:3000', {
+  withCredentials: true,
+  extraHeaders: {
+    "my-custom-header": "abcd"
+  }
+});
+
+
 socket.emit('Hello');
 
 function App() {
