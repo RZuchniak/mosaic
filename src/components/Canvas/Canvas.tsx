@@ -1,6 +1,8 @@
 import { useRef, useEffect, useState } from 'react';
 import './Canvas.css';
 
+import { socket } from "../../socket";
+
 
 type CanvasProps = React.DetailedHTMLProps<
 React.CanvasHTMLAttributes<HTMLCanvasElement>,
@@ -72,11 +74,11 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
         const y1 = Math.round(((y) - (rect.top))/zoom-0.5);
         context.fillStyle = 'red';
         context.fillRect(x1, y1, 1, 1);
+        socket.emit('drawtile', x1, y1);
         board[Math.round(x1)][Math.round(y1)] = Colour.Blue;
         
     }
 
-    
 
     useEffect(() => {
         console.log("start");
@@ -99,6 +101,11 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
             b=0;
             a+=1;
         }
+
+        socket.on('drawtile', (x1, y1) => {
+            context.fillRect(x1, y1, 1, 1);
+            console.log('draw tile');
+        })
 
     }, []);
 

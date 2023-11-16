@@ -12,10 +12,17 @@ const io = new Server(httpServer, {
 io.on("connection", (socket) => {
     console.log("client connected");
 
+    socket.on('drawtile', (x1, y1) => {
+        socket.broadcast.emit('drawtile', x1, y1);
+        console.log('Draw tile')
+    })
+
     socket.on('Hello', () => {
         console.log("Received");
         socket.emit('reply');
     })
 });
+
+
 
 httpServer.listen(8000);
