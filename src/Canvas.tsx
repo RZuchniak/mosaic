@@ -1,4 +1,4 @@
-import { useRef, useEffect, useTransition, useState, MouseEventHandler } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import './Canvas.css';
 
 type CanvasProps = React.DetailedHTMLProps<
@@ -32,17 +32,13 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
                 return;
             }
             setlocationx(Math.max(0, Math.min((locationx + (e.movementX/zoom)) , 1000)))
-            setlocationy(Math.max(-100, Math.min((locationy + (e.movementY/zoom)) , 500)))
-            console.log(zoom);
-            console.log(locationx);
+            setlocationy(Math.max(-500, Math.min((locationy + (e.movementY/zoom)) , 500)))
             canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
         }
     } 
     
     useEffect(() => {
-        console.log("1: " + zoom)
         setzoom(props.results || 1);
-        console.log("2: " + zoom);
     }, [props.results])
 
     useEffect(() => {
@@ -71,11 +67,10 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
         const y = e.clientY;
 
         const rect = canvas.getBoundingClientRect();
-        const x1 = ((x) - (rect.left))/zoom;
-        const y1 = ((y) - (rect.top))/zoom;
-        context.fillStyle = 'blue';
-        context.fillRect(x1, y1, 5, 5);
-
+        const x1 = Math.round(((x) - (rect.left))/zoom-0.5);
+        const y1 = Math.round(((y) - (rect.top))/zoom-0.5);
+        context.fillStyle = 'red';
+        context.fillRect(x1, y1, 1, 1);
         board[Math.round(x1)][Math.round(y1)] = Colour.Blue;
         
     }
@@ -92,12 +87,11 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
         if(!context) {
             return;
         }
-        context.fillStyle = 'red';
+        context.fillStyle = 'black';
         let a = 0;
         let b = 0;
         while (a<Number(props.width)) {
             while (b<Number(props.height)) {
-                context.fillStyle = board[a][b];
                 context.fillRect(a, b, 1, 1);
                 b+=1;
             }

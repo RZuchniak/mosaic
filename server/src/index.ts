@@ -5,12 +5,17 @@ import express from "express";
 const httpServer = createServer();
 const io = new Server(httpServer, {
     cors: {
-        origin: "http://localhost:8080",
+        origin: "http://localhost:5173",
     }
 });
 
 io.on("connection", (socket) => {
-    console.log("server connected");
+    console.log("client connected");
+
+    socket.on('Hello', () => {
+        console.log("Received");
+        socket.emit('reply');
+    })
 });
 
-httpServer.listen(3000);
+httpServer.listen(8000);

@@ -3,13 +3,11 @@ import Canvas from './Canvas'
 import { useState } from 'react';
 import { io } from "socket.io-client"
 
-const socket = io('http://localhost:3000', {
-  withCredentials: true,
-  extraHeaders: {
-    "my-custom-header": "abcd"
-  }
-});
+const socket = io('http://localhost:8000');
 
+socket.on('reply', () => {
+  console.log('received');
+})
 
 socket.emit('Hello');
 
@@ -18,7 +16,7 @@ function App() {
   
 
   const scroll = (e: WheelEvent) => {
-    setzoom(Math.round(Math.max(Math.min((e.deltaY*-0.001) + zoom, 2.02), 0.15)*100)/100);
+    setzoom(Math.round(Math.max(Math.min((e.deltaY*-0.002) + zoom, 11.03), 0.49)*100)/100);
   }
 
   window.addEventListener('wheel', scroll);
