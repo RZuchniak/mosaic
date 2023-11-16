@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import './Canvas.css';
 
+
 type CanvasProps = React.DetailedHTMLProps<
 React.CanvasHTMLAttributes<HTMLCanvasElement>,
 HTMLCanvasElement>;
@@ -32,7 +33,7 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
                 return;
             }
             setlocationx(Math.max(0, Math.min((locationx + (e.movementX/zoom)) , 1000)))
-            setlocationy(Math.max(-500, Math.min((locationy + (e.movementY/zoom)) , 500)))
+            setlocationy(Math.max(-550, Math.min((locationy + (e.movementY/zoom)) , 450)))
             canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
         }
     } 

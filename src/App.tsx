@@ -1,9 +1,8 @@
 import './App.css'
 import Canvas from './Canvas'
 import { useState } from 'react';
-import { io } from "socket.io-client"
 
-const socket = io('http://localhost:8000');
+import { socket } from './socket';
 
 socket.on('reply', () => {
   console.log('received');
