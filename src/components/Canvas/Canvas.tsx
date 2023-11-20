@@ -1,116 +1,104 @@
-import { useRef, useEffect, useState } from 'react';
-import './Canvas.css';
+import { useRef, useEffect, useState } from "react";
+import "./Canvas.css";
 
 import { socket } from "../../socket";
 
-
 type CanvasProps = React.DetailedHTMLProps<
-React.CanvasHTMLAttributes<HTMLCanvasElement>,
-HTMLCanvasElement>;
+  React.CanvasHTMLAttributes<HTMLCanvasElement>,
+  HTMLCanvasElement
+>;
 
 const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
-    
-    enum Colour  {
-        Red = 'red',
-        Blue = 'blue',
-        Green = 'green',
-        LightBlue = 'lightblue',
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const [zoom, setZoom] = useState(1);
+
+  const [locationX, setLocationX] = useState(0);
+  const [locationY, setLocationY] = useState(0);
+
+  function move(e: React.MouseEvent) {
+    if (e.buttons === 2) {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        return;
+      }
+      setLocationX(Math.max(0, Math.min(locationX + e.movementX / zoom, 1000)));
+      setLocationY(
+        Math.max(-550, Math.min(locationY + e.movementY / zoom, 450))
+      );
+      canvas.style.transform = `translate(${locationX}px, ${locationY}px)`;
     }
+  }
 
-    let board = Array(1000).fill(Array(1000).fill(Colour.Red));
+  useEffect(() => {
+    setZoom(props.results || 1);
+  }, [props.results]);
 
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const contextMenu = (e: Event) => {
+      e.preventDefault();
+    };
+    window.addEventListener("contextmenu", contextMenu);
+    return () => {
+      window.removeEventListener("contextmenu", contextMenu);
+    };
+  }, [zoom]);
 
-    const [zoom, setzoom] = useState(1)
-
-    const [locationx, setlocationx] = useState(0);
-    const [locationy, setlocationy] = useState(0);
-
-    function move(e: React.MouseEvent) {
-        
-        if(e.buttons === 2){
-            
-            const canvas = canvasRef.current;
-            if(!canvas) {
-                return;
-            }
-            setlocationx(Math.max(0, Math.min((locationx + (e.movementX/zoom)) , 1000)))
-            setlocationy(Math.max(-550, Math.min((locationy + (e.movementY/zoom)) , 450)))
-            canvas.style.transform = `translate(${locationx}px, ${locationy}px)`
-        }
-    } 
-    
-    useEffect(() => {
-        setzoom(props.results || 1);
-    }, [props.results])
-
-    useEffect(() => {
-        const contextMenu = (e: Event) => {
-            e.preventDefault();
-        }
-        window.addEventListener('contextmenu', contextMenu);
-        return () => {
-          
-          window.removeEventListener('contextmenu', contextMenu);
-        }
-      }, [zoom]);
-
-
-    const click = (e: any) => {
-        
-        const canvas = canvasRef.current;
-        if(!canvas) {
-            return;
-        }
-        const context = canvas.getContext('2d')
-        if(!context) {
-            return;
-        }
-        const x = e.clientX;
-        const y = e.clientY;
-
-        const rect = canvas.getBoundingClientRect();
-        const x1 = Math.round(((x) - (rect.left))/zoom-0.5);
-        const y1 = Math.round(((y) - (rect.top))/zoom-0.5);
-        context.fillStyle = 'red';
-        context.fillRect(x1, y1, 1, 1);
-        socket.emit('drawtile', x1, y1);
-        board[Math.round(x1)][Math.round(y1)] = Colour.Blue;
-        
+  const click = (e: any) => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
     }
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+    const x = e.clientX;
+    const y = e.clientY;
 
+    const rect = canvas.getBoundingClientRect();
+    const x1 = Math.round((x - rect.left) / zoom - 0.5);
+    const y1 = Math.round((y - rect.top) / zoom - 0.5);
+    context.fillStyle = "red";
+    context.fillRect(x1, y1, 1, 1);
+    socket.emit("drawtile", x1, y1);
+  };
 
-    useEffect(() => {
-        console.log("start");
-        const canvas = canvasRef.current;
-        if(!canvas) {
-            return;
-        }
-        const context = canvas.getContext('2d');
-        if(!context) {
-            return;
-        }
-        context.fillStyle = 'black';
-        let a = 0;
-        let b = 0;
-        while (a<Number(props.width)) {
-            while (b<Number(props.height)) {
-                context.fillRect(a, b, 1, 1);
-                b+=1;
-            }
-            b=0;
-            a+=1;
-        }
+  useEffect(() => {
+    console.log("start");
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return;
+    }
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+    socket.emit("getboard");
+    socket.on("giveboard", async (image: Buffer) => {
+      const img = new Image();
+      img.src = URL.createObjectURL(new Blob([image]));
+      img.onload = () => {
+        context.drawImage(img, 0, 0);
+        URL.revokeObjectURL(img.src);
+      };
+    });
 
-        socket.on('drawtile', (x1, y1) => {
-            context.fillRect(x1, y1, 1, 1);
-            console.log('draw tile');
-        })
+    socket.on("drawtile", (x1, y1) => {
+      context.fillRect(x1, y1, 1, 1);
+      console.log("draw tile");
+    });
+  }, []);
 
-    }, []);
-
-
-    return <canvas onClick={click} width={props.width} height={props.height} ref={canvasRef} onMouseMove={move}/>
+  return (
+    <canvas
+      onClick={click}
+      width={props.width}
+      height={props.height}
+      ref={canvasRef}
+      onMouseMove={move}
+    />
+  );
 };
 
 export default Canvas;
