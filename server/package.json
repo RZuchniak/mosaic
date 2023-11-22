@@ -6,19 +6,22 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/index",
-    "start": "node src/index"
+    "start": "node src/index",
+    "setup": "nodemon src/setup"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@types/express": "^4.17.21",
+    "@types/pg": "^8.10.9",
     "nodemon": "^3.0.1",
     "typescript": "^5.2.2"
   },
   "dependencies": {
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "pg": "^8.11.3",
     "sharp": "^0.32.6",
     "socket.io": "^4.7.2",
     "uuid": "^9.0.1"

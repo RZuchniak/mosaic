@@ -2,6 +2,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import express from "express";
 import sharp from "sharp";
+import { pool } from "./database";
 
 const canvas_array = new Array(3000000).fill(0);
 
