@@ -1,10 +1,25 @@
 import { createServer } from "http";
 import { Server } from "socket.io";
-import express from "express";
 import sharp from "sharp";
 import { pool } from "./database";
 
 const canvas_array = new Array(3000000).fill(0);
+
+pool.query("SELECT * FROM tile", (err, res) => {
+  if (err) {
+    console.log(err);
+  } else {
+    res.rows.forEach((row) => {
+      const location = row.id * 3;
+      const arr: string[] = [1, 3, 5].map(function (o) {
+        return row.colour.slice(o + 1, o + 3);
+      });
+      canvas_array[location] = parseInt(arr[0], 16);
+      canvas_array[location + 1] = parseInt(arr[1], 16);
+      canvas_array[location + 2] = parseInt(arr[2], 16);
+    });
+  }
+});
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -31,13 +46,23 @@ io.on("connection", (socket) => {
     socket.emit("giveboard", image);
   });
 
-  socket.on("drawtile", (x1, y1) => {
+  socket.on("drawtile", async (x1, y1, hex) => {
+    const arr: string[] = [1, 3, 5].map(function (o) {
+      return hex.slice(o + 1, o + 3);
+    });
     const location = (y1 * 1000 + x1) * 3;
-    canvas_array[location] = 0xff;
-    canvas_array[location + 1] = 0x00;
-    canvas_array[location + 2] = 0x00;
-    socket.broadcast.emit("drawtile", x1, y1);
+    canvas_array[location] = parseInt(arr[0], 16);
+    canvas_array[location + 1] = parseInt(arr[1], 16);
+    canvas_array[location + 2] = parseInt(arr[2], 16);
+    socket.broadcast.emit("drawtile", x1, y1, hex);
+
+    const { rows } = await pool.query(
+      "INSERT INTO TILE VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET colour = $2",
+      [y1 * 1000 + x1, hex]
+    );
+
     console.log("Draw tile");
+    console.log(arr[0], arr[1], arr[2]);
   });
 
   socket.on("Hello", () => {

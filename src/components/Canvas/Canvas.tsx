@@ -61,7 +61,7 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     const y1 = Math.round((y - rect.top) / zoom - 0.5);
     context.fillStyle = "red";
     context.fillRect(x1, y1, 1, 1);
-    socket.emit("drawtile", x1, y1);
+    socket.emit("drawtile", x1, y1, "0xff0000");
   };
 
   useEffect(() => {
@@ -84,7 +84,8 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
       };
     });
 
-    socket.on("drawtile", (x1, y1) => {
+    socket.on("drawtile", (x1, y1, hex) => {
+      context.fillStyle = hex;
       context.fillRect(x1, y1, 1, 1);
       console.log("draw tile");
     });
