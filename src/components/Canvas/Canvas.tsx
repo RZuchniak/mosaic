@@ -6,7 +6,7 @@ import { socket } from "../../socket";
 type CanvasProps = React.DetailedHTMLProps<
   React.CanvasHTMLAttributes<HTMLCanvasElement>,
   HTMLCanvasElement
->;
+> & { colour: string };
 
 const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -59,9 +59,9 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     const rect = canvas.getBoundingClientRect();
     const x1 = Math.round((x - rect.left) / zoom - 0.5);
     const y1 = Math.round((y - rect.top) / zoom - 0.5);
-    context.fillStyle = "red";
+    context.fillStyle = "#" + props.colour.slice(2);
     context.fillRect(x1, y1, 1, 1);
-    socket.emit("drawtile", x1, y1, "0xff0000");
+    socket.emit("drawtile", x1, y1, props.colour);
   };
 
   useEffect(() => {
@@ -85,7 +85,7 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     });
 
     socket.on("drawtile", (x1, y1, hex) => {
-      context.fillStyle = hex;
+      context.fillStyle = "#" + hex.slice(2);
       context.fillRect(x1, y1, 1, 1);
       console.log("draw tile");
     });
