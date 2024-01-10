@@ -7,7 +7,7 @@ const canvas_array = new Array(3000000).fill(0);
 
 pool.query("SELECT * FROM tile", (err, res) => {
   if (err) {
-    console.log(err);
+    console.error(err);
   } else {
     res.rows.forEach((row) => {
       const location = row.id * 3;
@@ -24,12 +24,11 @@ pool.query("SELECT * FROM tile", (err, res) => {
 const httpServer = createServer();
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "*",
   },
 });
 
 io.on("connection", (socket) => {
-  console.log("client connected");
 
   socket.on("getboard", async () => {
     const input = Uint8Array.from(canvas_array);
@@ -61,12 +60,9 @@ io.on("connection", (socket) => {
       [y1 * 1000 + x1, hex]
     );
 
-    console.log("Draw tile");
-    console.log(arr[0], arr[1], arr[2]);
   });
 
   socket.on("Hello", () => {
-    console.log("Received");
     socket.emit("reply");
   });
 });
