@@ -65,7 +65,6 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
   };
 
   useEffect(() => {
-    console.log("start");
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
@@ -87,7 +86,6 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     socket.on("drawtile", (x1, y1, hex) => {
       context.fillStyle = "#" + hex.slice(2);
       context.fillRect(x1, y1, 1, 1);
-      console.log("draw tile");
     });
   }, []);
 

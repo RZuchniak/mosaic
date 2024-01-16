@@ -6,7 +6,6 @@ import { socket } from './socket';
 import Selector from './components/Selector/Selector';
 
 socket.on('reply', () => {
-  console.log('received');
 })
 
 socket.emit('Hello');
