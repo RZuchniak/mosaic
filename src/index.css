@@ -1,10 +1,19 @@
+html,
+body,
 #root {
-    border: 0px;
-    margin: 0px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-    margin: 0px;
-    padding: 0px;
-    overflow: hidden;
+  overflow: hidden;
+  /* Desktop behind the maximized app (sliver if OS UI / rounding) */
+  background: #008080;
+  color: #000;
+  font-family: "MS Sans Serif", Tahoma, "Segoe UI", sans-serif;
+}
+
+#root {
+  box-sizing: border-box;
 }

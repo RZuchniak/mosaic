@@ -1,0 +1,17 @@
+name = "mosaic-api"
+main = "src/index.ts"
+compatibility_date = "2025-03-01"
+
+# Replace with output of: pnpm exec wrangler d1 create mosaic-db
+[[d1_databases]]
+binding = "DB"
+database_name = "mosaic-db"
+database_id = "00000000-0000-0000-0000-000000000001"
+
+[[durable_objects.bindings]]
+name = "MOSAIC_BOARD"
+class_name = "MosaicBoard"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["MosaicBoard"]
