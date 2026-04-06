@@ -6,7 +6,7 @@ compatibility_date = "2025-03-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "mosaic-db"
-database_id = "00000000-0000-0000-0000-000000000001"
+database_id = "fadba957-94c5-4db8-ae42-5e2f3485d28a"
 
 [[durable_objects.bindings]]
 name = "MOSAIC_BOARD"
@@ -14,4 +14,4 @@ class_name = "MosaicBoard"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["MosaicBoard"]
+new_sqlite_classes = ["MosaicBoard"]
