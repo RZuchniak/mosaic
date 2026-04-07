@@ -6,32 +6,22 @@ import { apiUrl, wsUrl } from "../../realtime";
 type CanvasProps = React.DetailedHTMLProps<
   React.CanvasHTMLAttributes<HTMLCanvasElement>,
   HTMLCanvasElement
-> & { colour: string; results?: number };
+> & {
+  colour: string;
+  results?: number;
+  onBoardLoadingChange?: (loading: boolean) => void;
+};
 
 const BOARD_BYTES = 1000 * 1000 * 3;
 
-const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
+const TAP_MAX_MOVE_PX = 16;
+
+const Canvas: React.FC<CanvasProps> = ({ onBoardLoadingChange, ...props }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
 
   const [zoom, setZoom] = useState(1);
-
-  const [locationX, setLocationX] = useState(0);
-  const [locationY, setLocationY] = useState(0);
-
-  function move(e: React.MouseEvent) {
-    if (e.buttons === 2) {
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        return;
-      }
-      setLocationX(Math.max(0, Math.min(locationX + e.movementX / zoom, 1000)));
-      setLocationY(
-        Math.max(-550, Math.min(locationY + e.movementY / zoom, 450))
-      );
-      canvas.style.transform = `translate(${locationX}px, ${locationY}px)`;
-    }
-  }
 
   useEffect(() => {
     setZoom(props.results || 1);
@@ -47,7 +37,7 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     };
   }, [zoom]);
 
-  const click = (e: React.MouseEvent) => {
+  const paintAtClient = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
@@ -56,12 +46,9 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     if (!context) {
       return;
     }
-    const x = e.clientX;
-    const y = e.clientY;
-
     const rect = canvas.getBoundingClientRect();
-    const x1 = Math.round((x - rect.left) / zoom - 0.5);
-    const y1 = Math.round((y - rect.top) / zoom - 0.5);
+    const x1 = Math.round((clientX - rect.left) / zoom - 0.5);
+    const y1 = Math.round((clientY - rect.top) / zoom - 0.5);
     context.fillStyle = "#" + props.colour.slice(2);
     context.fillRect(x1, y1, 1, 1);
     const payload = JSON.stringify({
@@ -74,6 +61,25 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(payload);
     }
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return;
+    pointerDownRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0) return;
+    const start = pointerDownRef.current;
+    pointerDownRef.current = null;
+    if (!start) return;
+    const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+    if (dist > TAP_MAX_MOVE_PX) return;
+    paintAtClient(e.clientX, e.clientY);
+  };
+
+  const onPointerCancel = () => {
+    pointerDownRef.current = null;
   };
 
   useEffect(() => {
@@ -107,13 +113,20 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
     }
 
     async function loadBoard(): Promise<void> {
-      const res = await fetch(apiUrl("/api/board"));
-      if (!res.ok) {
-        throw new Error(`board fetch failed: ${res.status}`);
-      }
-      const buf = await res.arrayBuffer();
-      if (!cancelled) {
-        applyBoardBuffer(buf);
+      onBoardLoadingChange?.(true);
+      try {
+        const res = await fetch(apiUrl("/api/board"));
+        if (!res.ok) {
+          throw new Error(`board fetch failed: ${res.status}`);
+        }
+        const buf = await res.arrayBuffer();
+        if (!cancelled) {
+          applyBoardBuffer(buf);
+        }
+      } finally {
+        if (!cancelled) {
+          onBoardLoadingChange?.(false);
+        }
       }
     }
 
@@ -172,6 +185,7 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
       .catch((err) => {
         console.error(err);
         if (!cancelled) {
+          onBoardLoadingChange?.(false);
           reconnectTimer = setTimeout(() => {
             void loadBoard().then(() => {
               if (!cancelled) {
@@ -190,15 +204,16 @@ const Canvas: React.FC<CanvasProps> = ({ ...props }) => {
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, []);
+  }, [onBoardLoadingChange]);
 
   return (
     <canvas
-      onClick={click}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       width={props.width}
       height={props.height}
       ref={canvasRef}
-      onMouseMove={move}
     />
   );
 };

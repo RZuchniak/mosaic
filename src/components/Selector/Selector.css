@@ -83,3 +83,18 @@
     grid-template-columns: repeat(6, 1fr);
   }
 }
+
+@media (max-width: 768px) {
+  .selector-palette__swatch {
+    min-height: 36px;
+  }
+
+  .selector-palette__color-input {
+    width: 48px;
+    height: 36px;
+  }
+
+  .selector-palette__custom {
+    gap: 8px;
+  }
+}

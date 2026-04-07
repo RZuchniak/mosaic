@@ -164,3 +164,34 @@
   left: auto;
   right: 8px;
 }
+
+/* Narrow screens: stack help / about so they don’t overlap */
+@media (max-width: 640px) {
+  .mspaint-win--about {
+    top: 40px;
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    width: auto;
+  }
+
+  .mspaint-win--portfolio {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 200px;
+    max-width: none;
+    width: auto;
+  }
+
+  .mspaint-flyout--collapsed {
+    top: 40px;
+    left: 8px;
+  }
+
+  .mspaint-flyout--right {
+    top: 40px;
+    left: auto;
+    right: 8px;
+  }
+}

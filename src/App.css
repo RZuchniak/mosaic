@@ -15,6 +15,8 @@
   box-shadow:
     1px 1px 0 #000,
     inset 1px 1px 0 #fff;
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 .mspaint-app__titlebar {
@@ -52,10 +54,42 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
   padding: 6px 6px 100px;
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.canvas-pan {
+  flex-shrink: 0;
+  transform-origin: center center;
+}
+
+.canvas-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+  background: rgba(128, 128, 128, 0.65);
+}
+
+.canvas-loading__box {
+  padding: 12px 20px;
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #dfdfdf #404040 #404040 #dfdfdf;
+  box-shadow: 1px 1px 0 #000;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.canvas-loading__text {
+  margin: 0;
 }
 
 .canvas-stage .scaler {
@@ -76,6 +110,8 @@
   bottom: 10px;
   transform: translateX(-50%);
   pointer-events: auto;
+  touch-action: manipulation;
+  max-width: calc(100vw - 16px);
 }
 
 #canvas {
@@ -84,4 +120,15 @@
   display: block;
   border: 1px solid #404040;
   box-shadow: 1px 1px 0 #fff;
+}
+
+@media (max-width: 768px) {
+  .canvas-stage {
+    padding-bottom: 200px;
+  }
+
+  .selector {
+    bottom: 6px;
+    width: calc(100vw - 12px);
+  }
 }
