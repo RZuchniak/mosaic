@@ -10,16 +10,25 @@ type CanvasProps = React.DetailedHTMLProps<
   colour: string;
   results?: number;
   onBoardLoadingChange?: (loading: boolean) => void;
+  /** Screen-space pointer movement while primary button is held (used for left-drag pan). */
+  onPanDelta?: (movementX: number, movementY: number) => void;
 };
 
 const BOARD_BYTES = 1000 * 1000 * 3;
 
 const TAP_MAX_MOVE_PX = 16;
+/** Past this distance from pointer-down, a drag is treated as pan instead of paint. */
+const PAN_ACTIVATE_PX = 10;
 
-const Canvas: React.FC<CanvasProps> = ({ onBoardLoadingChange, ...props }) => {
+const Canvas: React.FC<CanvasProps> = ({
+  onBoardLoadingChange,
+  onPanDelta,
+  ...props
+}) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
+  const panningRef = useRef(false);
 
   const [zoom, setZoom] = useState(1);
 
@@ -66,20 +75,51 @@ const Canvas: React.FC<CanvasProps> = ({ onBoardLoadingChange, ...props }) => {
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
     pointerDownRef.current = { x: e.clientX, y: e.clientY };
+    panningRef.current = false;
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!(e.buttons & 1) || !pointerDownRef.current || !onPanDelta) return;
+
+    const start = pointerDownRef.current;
+    if (!panningRef.current) {
+      const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+      if (dist > PAN_ACTIVATE_PX) {
+        panningRef.current = true;
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }
+    }
+    if (panningRef.current) {
+      onPanDelta(e.movementX, e.movementY);
+    }
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
     const start = pointerDownRef.current;
+    const wasPanning = panningRef.current;
     pointerDownRef.current = null;
+    panningRef.current = false;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* not captured */
+    }
+    if (wasPanning) return;
     if (!start) return;
     const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
     if (dist > TAP_MAX_MOVE_PX) return;
     paintAtClient(e.clientX, e.clientY);
   };
 
-  const onPointerCancel = () => {
+  const onPointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
     pointerDownRef.current = null;
+    panningRef.current = false;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* not captured */
+    }
   };
 
   useEffect(() => {
@@ -209,6 +249,7 @@ const Canvas: React.FC<CanvasProps> = ({ onBoardLoadingChange, ...props }) => {
   return (
     <canvas
       onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
       width={props.width}

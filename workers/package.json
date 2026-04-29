@@ -2,7 +2,7 @@
   "name": "mosaic-worker",
   "private": true,
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler d1 migrations apply mosaic-db --local && wrangler dev",
     "deploy": "wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply mosaic-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply mosaic-db --remote"

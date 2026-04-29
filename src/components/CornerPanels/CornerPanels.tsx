@@ -38,8 +38,8 @@ export function AboutPanel() {
         <div className="mspaint-win__inset">
           <p className="mspaint-win__text">
             A shared 1000×1000 canvas inspired by r/place. Pick a colour, click a
-            tile to paint it, and everyone sees updates live. Scroll to zoom,
-            right-drag to pan.
+            tile to paint it, and everyone sees updates live. Scroll to zoom;
+            drag to pan (click without dragging paints).
           </p>
         </div>
       </div>

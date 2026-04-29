@@ -25,11 +25,21 @@ function initialFitZoom(): number {
 
 function App() {
   const canvasStageRef = useRef<HTMLDivElement | null>(null);
-  const panDragging = useRef(false);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 768px)").matches
+      : false
+  );
+  const [mobileColourPanelOpen, setMobileColourPanelOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !window.matchMedia("(max-width: 768px)").matches;
+  });
+  /** Letterbox / stage pan (pointer not on the canvas element) */
+  const stagePanDragging = useRef(false);
   const pinchRef = useRef<{ initialDist: number; initialZoom: number } | null>(
     null
   );
-  /** One-finger drag pan (touch), same units as right-drag */
+  /** One-finger drag pan (touch) */
   const touchPanRef = useRef<{ lastX: number; lastY: number } | null>(null);
 
   const [zoom, setZoom] = useState(initialFitZoom);
@@ -46,11 +56,20 @@ function App() {
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 768px)");
-    const apply = () => setZoomMax(mq.matches ? ZOOM_MAX_MOBILE : ZOOM_MAX_DESKTOP);
+    const apply = () => {
+      setZoomMax(mq.matches ? ZOOM_MAX_MOBILE : ZOOM_MAX_DESKTOP);
+      setIsNarrowViewport(mq.matches);
+    };
     apply();
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
   }, []);
+
+  useEffect(() => {
+    if (!isNarrowViewport) {
+      setMobileColourPanelOpen(true);
+    }
+  }, [isNarrowViewport]);
 
   const reclampPan = useCallback(() => {
     const stage = canvasStageRef.current;
@@ -88,16 +107,40 @@ function App() {
     return () => window.removeEventListener("wheel", onWheel);
   }, [zoomMax]);
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 2) return;
+  const applyPanDelta = useCallback(
+    (movementX: number, movementY: number) => {
+      const stage = canvasStageRef.current;
+      if (!stage) return;
+      const vw = stage.clientWidth;
+      const vh = stage.clientHeight;
+      const maxPanX = Math.max(0, (1000 - vw / zoom) / 2);
+      const maxPanY = Math.max(0, (1000 - vh / zoom) / 2);
+      setPanX((prev) =>
+        clamp(prev + movementX / zoom, -maxPanX, maxPanX)
+      );
+      setPanY((prev) =>
+        clamp(prev + movementY / zoom, -maxPanY, maxPanY)
+      );
+    },
+    [zoom]
+  );
+
+  const onStagePointerDownCapture = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).tagName === "CANVAS") return;
     e.preventDefault();
-    panDragging.current = true;
+    stagePanDragging.current = true;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
-  const onPointerUp = (e: React.PointerEvent) => {
-    if (e.button !== 2) return;
-    panDragging.current = false;
+  const onStagePointerMove = (e: React.PointerEvent) => {
+    if (!stagePanDragging.current) return;
+    applyPanDelta(e.movementX, e.movementY);
+  };
+
+  const endStagePan = (e: React.PointerEvent) => {
+    if (!stagePanDragging.current) return;
+    stagePanDragging.current = false;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
@@ -105,20 +148,13 @@ function App() {
     }
   };
 
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!panDragging.current) return;
-    const stage = canvasStageRef.current;
-    if (!stage) return;
-    const vw = stage.clientWidth;
-    const vh = stage.clientHeight;
-    const maxPanX = Math.max(0, (1000 - vw / zoom) / 2);
-    const maxPanY = Math.max(0, (1000 - vh / zoom) / 2);
-    setPanX((prev) =>
-      clamp(prev + e.movementX / zoom, -maxPanX, maxPanX)
-    );
-    setPanY((prev) =>
-      clamp(prev + e.movementY / zoom, -maxPanY, maxPanY)
-    );
+  const onStagePointerUp = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    endStagePan(e);
+  };
+
+  const onStagePointerCancel = (e: React.PointerEvent) => {
+    endStagePan(e);
   };
 
   const touchDist = (t: TouchList) => {
@@ -220,16 +256,23 @@ function App() {
       <header className="mspaint-app__titlebar">
         <span className="mspaint-app__title">Mosaic</span>
       </header>
-      <div className="mspaint-app__client">
+      <div
+        className={
+          "mspaint-app__client" +
+          (isNarrowViewport && !mobileColourPanelOpen
+            ? " mspaint-app__client--palette-collapsed-mobile"
+            : "")
+        }
+      >
         <AboutPanel />
         <PortfolioPanel />
         <div
           ref={canvasStageRef}
           className="canvas-stage"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
+          onPointerDownCapture={onStagePointerDownCapture}
+          onPointerMove={onStagePointerMove}
+          onPointerUp={onStagePointerUp}
+          onPointerCancel={onStagePointerCancel}
         >
           {boardLoading && (
             <div className="canvas-loading" aria-live="polite" aria-busy="true">
@@ -250,13 +293,18 @@ function App() {
                 results={zoom}
                 colour={colour}
                 onBoardLoadingChange={setBoardLoading}
+                onPanDelta={applyPanDelta}
               />
             </div>
           </div>
         </div>
-        <div className="selector">
-          <Selector colour={colour} setColour={setColour} />
-        </div>
+        <Selector
+          colour={colour}
+          setColour={setColour}
+          isMobileLayout={isNarrowViewport}
+          mobileOpen={mobileColourPanelOpen}
+          onMobileOpenChange={setMobileColourPanelOpen}
+        />
       </div>
     </div>
   );
