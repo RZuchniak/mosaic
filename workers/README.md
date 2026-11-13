@@ -7,7 +7,7 @@ Workers + **Durable Object** (`MosaicBoard`) + **D1** replace the legacy Node/So
 | Method / path | Description |
 |---------------|-------------|
 | `GET /api/board` | Raw RGB, `1000×1000×3` bytes (`application/octet-stream`). Default pixels are black (`0x000000`), matching the old in-memory buffer. |
-| `WebSocket /ws` | JSON protocol: client `{"t":"draw","x":number,"y":number,"c":"0xrrggbb"}`; server to others `{"t":"tile","x","y","c"}`. Optional `{"t":"ping"}` → `{"t":"pong"}`. |
+| `WebSocket /ws` | Send a placement with `{"t":"draw","x":number,"y":number,"c":"0xrrggbb"}`. Viewers receive `{"t":"tile","x","y","c"}` by default. Send `{"t":"subscribe-batch"}` to receive `{"t":"tiles","tiles":[{"x","y","c"}, ...]}`. Optional `{"t":"ping"}` → `{"t":"pong"}`. |
 
 `OPTIONS` on any URL handled by the DO returns CORS headers for browser cross-origin `GET /api/board`.
 

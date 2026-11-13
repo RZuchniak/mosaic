@@ -25,6 +25,7 @@ function initialFitZoom(): number {
 
 function App() {
   const canvasStageRef = useRef<HTMLDivElement | null>(null);
+  const stageSizeRef = useRef({ width: 0, height: 0 });
   const [isNarrowViewport, setIsNarrowViewport] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(max-width: 768px)").matches
@@ -34,8 +35,7 @@ function App() {
     if (typeof window === "undefined") return true;
     return !window.matchMedia("(max-width: 768px)").matches;
   });
-  /** Letterbox / stage pan (pointer not on the canvas element) */
-  const stagePanDragging = useRef(false);
+  const stageDragRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const pinchRef = useRef<{ initialDist: number; initialZoom: number } | null>(
     null
   );
@@ -71,28 +71,29 @@ function App() {
     }
   }, [isNarrowViewport]);
 
-  const reclampPan = useCallback(() => {
-    const stage = canvasStageRef.current;
-    if (!stage) return;
-    const vw = stage.clientWidth;
-    const vh = stage.clientHeight;
-    const maxPanX = Math.max(0, (1000 - vw / zoom) / 2);
-    const maxPanY = Math.max(0, (1000 - vh / zoom) / 2);
-    setPanX((p) => clamp(p, -maxPanX, maxPanX));
-    setPanY((p) => clamp(p, -maxPanY, maxPanY));
-  }, [zoom]);
+  const applyPanDelta = useCallback((dx: number, dy: number) => {
+    const { width, height } = stageSizeRef.current;
+    const z = zoomRef.current;
+    const maxPanX = Math.max(0, (1000 - width / z) / 2);
+    const maxPanY = Math.max(0, (1000 - height / z) / 2);
+    setPanX((x) => clamp(x + dx / z, -maxPanX, maxPanX));
+    setPanY((y) => clamp(y + dy / z, -maxPanY, maxPanY));
+  }, []);
 
   useEffect(() => {
-    reclampPan();
-  }, [reclampPan]);
+    applyPanDelta(0, 0);
+  }, [applyPanDelta, zoom]);
 
   useEffect(() => {
     const stage = canvasStageRef.current;
     if (!stage) return;
-    const ro = new ResizeObserver(() => reclampPan());
+    const ro = new ResizeObserver(([entry]) => {
+      stageSizeRef.current = entry.contentRect;
+      applyPanDelta(0, 0);
+    });
     ro.observe(stage);
     return () => ro.disconnect();
-  }, [reclampPan]);
+  }, [applyPanDelta]);
 
   useEffect(() => {
     const onWheel = (e: WheelEvent) => {
@@ -107,54 +108,26 @@ function App() {
     return () => window.removeEventListener("wheel", onWheel);
   }, [zoomMax]);
 
-  const applyPanDelta = useCallback(
-    (movementX: number, movementY: number) => {
-      const stage = canvasStageRef.current;
-      if (!stage) return;
-      const vw = stage.clientWidth;
-      const vh = stage.clientHeight;
-      const maxPanX = Math.max(0, (1000 - vw / zoom) / 2);
-      const maxPanY = Math.max(0, (1000 - vh / zoom) / 2);
-      setPanX((prev) =>
-        clamp(prev + movementX / zoom, -maxPanX, maxPanX)
-      );
-      setPanY((prev) =>
-        clamp(prev + movementY / zoom, -maxPanY, maxPanY)
-      );
-    },
-    [zoom]
-  );
-
-  const onStagePointerDownCapture = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    if ((e.target as HTMLElement).tagName === "CANVAS") return;
+  const onStagePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || !e.isPrimary || e.pointerType === "touch") return;
+    if (e.target instanceof HTMLCanvasElement) return;
     e.preventDefault();
-    stagePanDragging.current = true;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    stageDragRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    e.currentTarget.setPointerCapture(e.pointerId);
   };
 
-  const onStagePointerMove = (e: React.PointerEvent) => {
-    if (!stagePanDragging.current) return;
-    applyPanDelta(e.movementX, e.movementY);
+  const onStagePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = stageDragRef.current;
+    if (drag?.id !== e.pointerId || !(e.buttons & 1)) return;
+    applyPanDelta(e.clientX - drag.x, e.clientY - drag.y);
+    drag.x = e.clientX;
+    drag.y = e.clientY;
   };
 
-  const endStagePan = (e: React.PointerEvent) => {
-    if (!stagePanDragging.current) return;
-    stagePanDragging.current = false;
-    try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {
-      /* already released */
+  const endStagePan = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (stageDragRef.current?.id === e.pointerId) {
+      stageDragRef.current = null;
     }
-  };
-
-  const onStagePointerUp = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    endStagePan(e);
-  };
-
-  const onStagePointerCancel = (e: React.PointerEvent) => {
-    endStagePan(e);
   };
 
   const touchDist = (t: TouchList) => {
@@ -212,15 +185,7 @@ function App() {
         if (Math.abs(dx) + Math.abs(dy) > 0) {
           e.preventDefault();
         }
-        const z = zoomRef.current;
-        const stage = canvasStageRef.current;
-        if (!stage) return;
-        const vw = stage.clientWidth;
-        const vh = stage.clientHeight;
-        const maxPanX = Math.max(0, (1000 - vw / z) / 2);
-        const maxPanY = Math.max(0, (1000 - vh / z) / 2);
-        setPanX((prev) => clamp(prev + dx / z, -maxPanX, maxPanX));
-        setPanY((prev) => clamp(prev + dy / z, -maxPanY, maxPanY));
+        applyPanDelta(dx, dy);
       }
     };
 
@@ -249,7 +214,7 @@ function App() {
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [zoomMax]);
+  }, [applyPanDelta, zoomMax]);
 
   return (
     <div className="App mspaint-app">
@@ -269,10 +234,11 @@ function App() {
         <div
           ref={canvasStageRef}
           className="canvas-stage"
-          onPointerDownCapture={onStagePointerDownCapture}
+          onPointerDown={onStagePointerDown}
           onPointerMove={onStagePointerMove}
-          onPointerUp={onStagePointerUp}
-          onPointerCancel={onStagePointerCancel}
+          onPointerUp={endStagePan}
+          onPointerCancel={endStagePan}
+          onLostPointerCapture={endStagePan}
         >
           {boardLoading && (
             <div className="canvas-loading" aria-live="polite" aria-busy="true">
@@ -283,7 +249,7 @@ function App() {
           )}
           <div
             className="canvas-pan"
-            style={{ transform: `translate(${panX}px, ${panY}px)` }}
+            style={{ transform: `translate(${panX * zoom}px, ${panY * zoom}px)` }}
           >
             <div className="scaler" style={{ transform: `scale(${zoom})` }}>
               <Canvas

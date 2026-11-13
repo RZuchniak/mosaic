@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import "./Canvas.css";
 
 import { apiUrl, wsUrl } from "../../realtime";
@@ -14,11 +14,19 @@ type CanvasProps = React.DetailedHTMLProps<
   onPanDelta?: (movementX: number, movementY: number) => void;
 };
 
+type TileChange = { x: number; y: number; c: string };
+
 const BOARD_BYTES = 1000 * 1000 * 3;
 
-const TAP_MAX_MOVE_PX = 16;
-/** Past this distance from pointer-down, a drag is treated as pan instead of paint. */
-const PAN_ACTIVATE_PX = 10;
+const MOUSE_DRAG_THRESHOLD_PX = 4;
+const TOUCH_DRAG_THRESHOLD_PX = 10;
+
+type PointerGesture = {
+  id: number;
+  x: number;
+  y: number;
+  dragging: boolean;
+};
 
 const Canvas: React.FC<CanvasProps> = ({
   onBoardLoadingChange,
@@ -27,14 +35,9 @@ const Canvas: React.FC<CanvasProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
-  const panningRef = useRef(false);
+  const gestureRef = useRef<PointerGesture | null>(null);
 
-  const [zoom, setZoom] = useState(1);
-
-  useEffect(() => {
-    setZoom(props.results || 1);
-  }, [props.results]);
+  const zoom = props.results || 1;
 
   useEffect(() => {
     const contextMenu = (e: Event) => {
@@ -44,7 +47,7 @@ const Canvas: React.FC<CanvasProps> = ({
     return () => {
       window.removeEventListener("contextmenu", contextMenu);
     };
-  }, [zoom]);
+  }, []);
 
   const paintAtClient = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -56,8 +59,9 @@ const Canvas: React.FC<CanvasProps> = ({
       return;
     }
     const rect = canvas.getBoundingClientRect();
-    const x1 = Math.round((clientX - rect.left) / zoom - 0.5);
-    const y1 = Math.round((clientY - rect.top) / zoom - 0.5);
+    const x1 = Math.floor((clientX - rect.left) / zoom - canvas.clientLeft);
+    const y1 = Math.floor((clientY - rect.top) / zoom - canvas.clientTop);
+    if (x1 < 0 || x1 >= canvas.width || y1 < 0 || y1 >= canvas.height) return;
     context.fillStyle = "#" + props.colour.slice(2);
     context.fillRect(x1, y1, 1, 1);
     const payload = JSON.stringify({
@@ -73,52 +77,40 @@ const Canvas: React.FC<CanvasProps> = ({
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0) return;
-    pointerDownRef.current = { x: e.clientX, y: e.clientY };
-    panningRef.current = false;
+    if (e.button !== 0 || !e.isPrimary) return;
+    gestureRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, dragging: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const updateGesture = (e: React.PointerEvent<HTMLCanvasElement>, gesture: PointerGesture) => {
+    const dx = e.clientX - gesture.x;
+    const dy = e.clientY - gesture.y;
+    const threshold = e.pointerType === "touch" ? TOUCH_DRAG_THRESHOLD_PX : MOUSE_DRAG_THRESHOLD_PX;
+    if (!gesture.dragging && Math.hypot(dx, dy) < threshold) return;
+
+    gesture.dragging = true;
+    gesture.x = e.clientX;
+    gesture.y = e.clientY;
+    // The stage already handles touch panning and pinch zoom.
+    if (e.pointerType !== "touch" && (dx !== 0 || dy !== 0)) onPanDelta?.(dx, dy);
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!(e.buttons & 1) || !pointerDownRef.current || !onPanDelta) return;
-
-    const start = pointerDownRef.current;
-    if (!panningRef.current) {
-      const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
-      if (dist > PAN_ACTIVATE_PX) {
-        panningRef.current = true;
-        e.currentTarget.setPointerCapture(e.pointerId);
-      }
-    }
-    if (panningRef.current) {
-      onPanDelta(e.movementX, e.movementY);
-    }
+    const gesture = gestureRef.current;
+    if (gesture?.id === e.pointerId && (e.buttons & 1)) updateGesture(e, gesture);
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0) return;
-    const start = pointerDownRef.current;
-    const wasPanning = panningRef.current;
-    pointerDownRef.current = null;
-    panningRef.current = false;
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      /* not captured */
-    }
-    if (wasPanning) return;
-    if (!start) return;
-    const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
-    if (dist > TAP_MAX_MOVE_PX) return;
-    paintAtClient(e.clientX, e.clientY);
+    const gesture = gestureRef.current;
+    if (gesture?.id !== e.pointerId || e.button !== 0) return;
+    gestureRef.current = null;
+    updateGesture(e, gesture);
+    if (!gesture.dragging) paintAtClient(e.clientX, e.clientY);
   };
 
-  const onPointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    pointerDownRef.current = null;
-    panningRef.current = false;
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      /* not captured */
+  const cancelGesture = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (gestureRef.current?.id === e.pointerId) {
+      gestureRef.current = null;
     }
   };
 
@@ -176,23 +168,22 @@ const Canvas: React.FC<CanvasProps> = ({
       }
       const ws = new WebSocket(wsUrl("/ws"));
       wsRef.current = ws;
+      ws.onopen = () => ws.send(JSON.stringify({ t: "subscribe-batch" }));
 
       ws.onmessage = (ev) => {
         try {
-          const msg = JSON.parse(ev.data as string) as {
+          const msg = JSON.parse(ev.data as string) as Partial<TileChange> & {
             t?: string;
-            x?: number;
-            y?: number;
-            c?: string;
+            tiles?: Partial<TileChange>[];
           };
-          if (
-            msg.t === "tile" &&
-            typeof msg.x === "number" &&
-            typeof msg.y === "number" &&
-            typeof msg.c === "string"
-          ) {
-            context.fillStyle = "#" + msg.c.slice(2);
-            context.fillRect(msg.x, msg.y, 1, 1);
+          const tiles = msg?.t === "tiles" && Array.isArray(msg.tiles)
+            ? msg.tiles
+            : msg?.t === "tile" ? [msg] : [];
+          for (const tile of tiles) {
+            if (typeof tile?.x === "number" && typeof tile.y === "number" && typeof tile.c === "string") {
+              context.fillStyle = "#" + tile.c.slice(2);
+              context.fillRect(tile.x, tile.y, 1, 1);
+            }
           }
         } catch {
           /* ignore malformed */
@@ -248,10 +239,12 @@ const Canvas: React.FC<CanvasProps> = ({
 
   return (
     <canvas
+      id={props.id}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
+      onPointerCancel={cancelGesture}
+      onLostPointerCapture={cancelGesture}
       width={props.width}
       height={props.height}
       ref={canvasRef}
