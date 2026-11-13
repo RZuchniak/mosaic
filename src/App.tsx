@@ -25,7 +25,13 @@ function initialFitZoom(): number {
 
 function App() {
   const canvasStageRef = useRef<HTMLDivElement | null>(null);
-  const stageSizeRef = useRef({ width: 0, height: 0 });
+  const canvasPanRef = useRef<HTMLDivElement | null>(null);
+  const panBoundsRef = useRef({
+    halfWidth: 0,
+    halfHeight: 0,
+    centerOffsetX: 0,
+    centerOffsetY: 0,
+  });
   const [isNarrowViewport, setIsNarrowViewport] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(max-width: 768px)").matches
@@ -72,12 +78,12 @@ function App() {
   }, [isNarrowViewport]);
 
   const applyPanDelta = useCallback((dx: number, dy: number) => {
-    const { width, height } = stageSizeRef.current;
+    const { halfWidth, halfHeight, centerOffsetX, centerOffsetY } = panBoundsRef.current;
     const z = zoomRef.current;
-    const maxPanX = Math.max(0, (1000 - width / z) / 2);
-    const maxPanY = Math.max(0, (1000 - height / z) / 2);
-    setPanX((x) => clamp(x + dx / z, -maxPanX, maxPanX));
-    setPanY((y) => clamp(y + dy / z, -maxPanY, maxPanY));
+    const centerX = centerOffsetX / z;
+    const centerY = centerOffsetY / z;
+    setPanX((x) => clamp(x + dx / z, centerX - halfWidth, centerX + halfWidth));
+    setPanY((y) => clamp(y + dy / z, centerY - halfHeight, centerY + halfHeight));
   }, []);
 
   useEffect(() => {
@@ -86,11 +92,24 @@ function App() {
 
   useEffect(() => {
     const stage = canvasStageRef.current;
-    if (!stage) return;
-    const ro = new ResizeObserver(([entry]) => {
-      stageSizeRef.current = entry.contentRect;
+    const canvasPan = canvasPanRef.current;
+    if (!stage || !canvasPan) return;
+
+    const measurePanBounds = () => {
+      const { left, top } = stage.getBoundingClientRect();
+      // Layout offsets exclude pan and zoom and account for the palette padding.
+      const halfWidth = canvasPan.offsetWidth / 2;
+      const halfHeight = canvasPan.offsetHeight / 2;
+      panBoundsRef.current = {
+        halfWidth,
+        halfHeight,
+        centerOffsetX: window.innerWidth / 2 - (left + canvasPan.offsetLeft + halfWidth),
+        centerOffsetY: window.innerHeight / 2 - (top + canvasPan.offsetTop + halfHeight),
+      };
       applyPanDelta(0, 0);
-    });
+    };
+    measurePanBounds();
+    const ro = new ResizeObserver(measurePanBounds);
     ro.observe(stage);
     return () => ro.disconnect();
   }, [applyPanDelta]);
@@ -248,6 +267,7 @@ function App() {
             </div>
           )}
           <div
+            ref={canvasPanRef}
             className="canvas-pan"
             style={{ transform: `translate(${panX * zoom}px, ${panY * zoom}px)` }}
           >
